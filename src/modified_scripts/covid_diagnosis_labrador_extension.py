@@ -20,20 +20,18 @@ repo_root = os.path.dirname(scripts_dir)         # .../labrador
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
-
 import numpy as np
 import pandas as pd
 from sklearn import preprocessing
 from sklearn.model_selection import KFold
 from tensorflow.keras.utils import set_random_seed
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import SparseCategoricalCrossentropy, Reduction
+from tensorflow.keras.losses import BinaryCrossentropy, Reduction
 from tqdm import tqdm
 import wandb
 
 from lab_transformers.models.labrador.finetuning_wrapper import LabradorFinetuneWrapper
 from models.labrador_pooling import LabradorPoolingWrapper
-
 from lab_transformers.utils import gen_combinations
 
 time_string = time.strftime("%Y%m%d-%H%M%S")
@@ -42,12 +40,14 @@ if "wandb_key" in os.environ:
 else:
     os.environ["WANDB_MODE"] = "disabled"
 
+
 config_path = sys.argv[1]
 fraction_of_data_to_use = float(sys.argv[2])
 
 with open(config_path) as f:
     config = json.load(f)
 
+from lab_transformers.utils import gen_combinations
 
 combos = list(gen_combinations(config["train_config"]))
 print(f"[DEBUG] Number of HP combos: {len(combos)}")
@@ -79,11 +79,9 @@ model_inputs = np.load(
         config["system_config"]["dataset_dir"], config["system_config"]["dataset_name"]
     )
 )
+output_size = 1
 
-num_classes = len(np.unique(model_inputs["label"]))
-scce = SparseCategoricalCrossentropy(
-    from_logits=False, reduction=Reduction.SUM_OVER_BATCH_SIZE
-)
+bce = BinaryCrossentropy(from_logits=False, reduction=Reduction.SUM_OVER_BATCH_SIZE)
 results = []
 use_wandb = config["system_config"]["use_wandb"].lower() == "true"
 for rep in range(config["train_config"]["num_reps"]):
@@ -139,6 +137,19 @@ for rep in range(config["train_config"]["num_reps"]):
             X_kval = {k: X_train[k][kval_index] for k in X_train.keys()}
             y_ktrain, y_kval = y_train[ktrain_index], y_train[kval_index]
 
+            # Impute missing values with column mean in non_mimic_features_continuous
+            col_mean = np.nanmean(X_ktrain["non_mimic_features_continuous"], axis=0)
+            miss_ix_train = np.where(
+                np.isnan(X_ktrain["non_mimic_features_continuous"])
+            )
+            miss_ix_val = np.where(np.isnan(X_kval["non_mimic_features_continuous"]))
+            X_ktrain["non_mimic_features_continuous"][miss_ix_train] = np.take(
+                col_mean, miss_ix_train[1]
+            )
+            X_kval["non_mimic_features_continuous"][miss_ix_val] = np.take(
+                col_mean, miss_ix_val[1]
+            )
+
             # Standardize the continuous non-mimic-lab features in X
             scaler = preprocessing.StandardScaler().fit(
                 X_ktrain["non_mimic_features_continuous"]
@@ -161,7 +172,7 @@ for rep in range(config["train_config"]["num_reps"]):
                 model = [
                     LabradorPoolingWrapper(
                         base_model_path=transformer_weights_path,
-                        output_size=num_classes,
+                        output_size=output_size,
                         output_activation=config["train_config"]["output_activation"],
                         model_params=config["model_config"],
                         dropout_rate=train_config_i["dropout_rate"],
@@ -179,7 +190,7 @@ for rep in range(config["train_config"]["num_reps"]):
                 model = [
                     LabradorPoolingWrapper(
                         base_model_path=transformer_weights_path,
-                        output_size=num_classes,
+                        output_size=output_size,
                         output_activation=config["train_config"]["output_activation"],
                         model_params=config["model_config"],
                         dropout_rate=train_config_i["dropout_rate"],
@@ -240,8 +251,8 @@ for rep in range(config["train_config"]["num_reps"]):
                 y_kpred = [m.call(X_kval) for m in model]
                 y_kpred = np.mean(y_kpred, axis=0)
 
-            categorical_ce = scce(y_kval, y_kpred).numpy()
-            labrador_crossentropies.append(categorical_ce)
+            binary_ce = bce(y_kval, y_kpred).numpy()
+            labrador_crossentropies.append(binary_ce)
 
         if use_wandb:
             run_name = (
@@ -264,14 +275,14 @@ for rep in range(config["train_config"]["num_reps"]):
         model = [
             LabradorPoolingWrapper(
                 base_model_path=transformer_weights_path,
-                output_size=num_classes,
+                output_size=output_size,
                 output_activation=config["train_config"]["output_activation"],
                 model_params=config["model_config"],
                 dropout_rate=best_hps["dropout_rate"],
                 add_extra_dense_layer=best_hps["add_extra_dense_layer"],
                 train_base_model=config["train_config"]["train_base_model"].lower()
                 == "true",
-                pooling_type=config["model_config"].get("pooling_type", "attn")
+                pooling_type=config["model_config"].get("pooling_type", "attn"),
             )
             for _ in range(config["train_config"]["real_ensembling_samples"])
         ]
@@ -280,15 +291,14 @@ for rep in range(config["train_config"]["num_reps"]):
         model = [
             LabradorPoolingWrapper(
                 base_model_path=transformer_weights_path,
-                output_size=num_classes,
+                output_size=output_size,
                 output_activation=config["train_config"]["output_activation"],
                 model_params=config["model_config"],
                 dropout_rate=best_hps["dropout_rate"],
                 add_extra_dense_layer=best_hps["add_extra_dense_layer"],
                 train_base_model=config["train_config"]["train_base_model"].lower()
                 == "true",
-                pooling_type=config["model_config"].get("pooling_type", "attn")
-                
+                pooling_type=config["model_config"].get("pooling_type", "attn"),
             )
         ]
 
@@ -299,6 +309,18 @@ for rep in range(config["train_config"]["num_reps"]):
             run_eagerly=config["system_config"]["run_eagerly"].lower() == "true",
         )
 
+    # Impute missing values with column mean
+    col_mean = np.nanmean(X_train["non_mimic_features_continuous"], axis=0)
+    miss_ix_train = np.where(np.isnan(X_train["non_mimic_features_continuous"]))
+    miss_ix_test = np.where(np.isnan(X_test["non_mimic_features_continuous"]))
+    X_train["non_mimic_features_continuous"][miss_ix_train] = np.take(
+        col_mean, miss_ix_train[1]
+    )
+    X_test["non_mimic_features_continuous"][miss_ix_test] = np.take(
+        col_mean, miss_ix_test[1]
+    )
+
+    # Standardize the continuous features
     scaler = preprocessing.StandardScaler().fit(
         X_train["non_mimic_features_continuous"]
     )
@@ -351,7 +373,7 @@ for rep in range(config["train_config"]["num_reps"]):
         y_pred = [m.call(X_test_scaled) for m in model]
         y_pred = np.mean(y_pred, axis=0)
 
-    ce = scce(y_test, y_pred).numpy()
+    ce = bce(y_test, y_pred).numpy()
 
     # Save y_test and y_pred to csv
     test_prediction_df = pd.concat(
@@ -423,3 +445,4 @@ df.to_csv(
 
 total_seconds = time.time() - global_start
 print(f"Total runtime: {total_seconds/60:.2f} minutes ({total_seconds/3600:.2f} hours)")
+

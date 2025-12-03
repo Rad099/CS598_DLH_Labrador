@@ -1,19 +1,22 @@
 {
   "system_config": {
-    "wandb_project_name": "covid_diagnosis_labrador",
-    "use_wandb": "True",
-    "wandb_mode": "offline",
-    "saved_model_path": "model_weights/",
-    "results_path": "data/results/covid_diagnosis/",
-    "dataset_dir": "data/evaluations",
-    "transformer_dir": "labrador",
-    "processed_data_dir": "data/processed",
-    "dataset_name": "covid_diagnosis_labrador_data.npz",
-    "codebook_path": "data/processed/labcode_codebook_labrador.csv",
-    "ecdf_path": "data/processed/mimic4_ecdfs.npz",
-    "run_eagerly": "False",
-    "random_seed": 3141592
-  },
+  "wandb_project_name": "covid_diagnosis_labrador",
+  "use_wandb": "True",
+  "wandb_mode": "offline",
+
+  "saved_model_path": "original_labrador/model_weights/",
+  "results_path": "original_labrador/data/results/covid_diagnosis/",
+  "dataset_dir": "original_labrador/data/evaluations",
+  "processed_data_dir": "original_labrador/data/processed",
+
+  "dataset_name": "covid_diagnosis_labrador_data.npz",
+  "codebook_path": "original_labrador/data/processed/labcode_codebook_labrador.csv",
+  "ecdf_path": "original_labrador/data/processed/mimic4_ecdfs.npz",
+
+  "run_eagerly": "False",
+  "random_seed": 3141592
+}
+,
   "train_config": {
     "num_reps": 1,
     "num_k_folds": 3,
