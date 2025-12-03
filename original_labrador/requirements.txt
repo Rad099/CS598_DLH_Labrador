@@ -4,7 +4,7 @@ seaborn
 statsmodels
 umap-learn
 xgboost
-tensorflow==2.15.1
+tensorflow[and-cuda]==2.15.1
 transformers==4.36.2
 pandas==2.1.4
 scikit-learn==1.4.2
