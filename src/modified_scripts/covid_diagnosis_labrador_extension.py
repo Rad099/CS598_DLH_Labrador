@@ -2,7 +2,7 @@ import sys, os
 
 repo_root = os.path.dirname(os.path.abspath(__file__))  # or hardcode in Colab
 sys.path.append(os.path.join(repo_root, "src"))
-sys.path.append(os.path.join(repo_root, "labrador"))
+sys.path.append(os.path.join(repo_root, "original_labrador"))
 
 import json
 import os
@@ -32,6 +32,8 @@ from tqdm import tqdm
 import wandb
 
 from lab_transformers.models.labrador.finetuning_wrapper import LabradorFinetuneWrapper
+from models.labrador_pooling import LabradorPoolingWrapper
+
 from lab_transformers.utils import gen_combinations
 
 time_string = time.strftime("%Y%m%d-%H%M%S")
@@ -168,6 +170,7 @@ for rep in range(config["train_config"]["num_reps"]):
                             "train_base_model"
                         ].lower()
                         == "true",
+                        pooling_type=config["model_config"].get("pooling_type", "attn"),
                     )
                     for _ in range(config["train_config"]["real_ensembling_samples"])
                 ]
@@ -185,6 +188,7 @@ for rep in range(config["train_config"]["num_reps"]):
                             "train_base_model"
                         ].lower()
                         == "true",
+                        pooling_type=config["model_config"].get("pooling_type", "attn"),
                     )
                 ]
 
