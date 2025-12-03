@@ -159,7 +159,7 @@ for rep in range(config["train_config"]["num_reps"]):
             # Fit and evaluate the model
             if config.get("train_config", {}).get("real_ensembling_samples", False):
                 model = [
-                    LabradorFinetuneWrapper(
+                    LabradorPoolingWrapper(
                         base_model_path=transformer_weights_path,
                         output_size=num_classes,
                         output_activation=config["train_config"]["output_activation"],
@@ -177,7 +177,7 @@ for rep in range(config["train_config"]["num_reps"]):
 
             else:
                 model = [
-                    LabradorFinetuneWrapper(
+                    LabradorPoolingWrapper(
                         base_model_path=transformer_weights_path,
                         output_size=num_classes,
                         output_activation=config["train_config"]["output_activation"],
@@ -262,7 +262,7 @@ for rep in range(config["train_config"]["num_reps"]):
     # Fit the model with the best hyperparameters on the full training set
     if config.get("train_config", {}).get("real_ensembling_samples", False):
         model = [
-            LabradorFinetuneWrapper(
+            LabradorPoolingWrapper(
                 base_model_path=transformer_weights_path,
                 output_size=num_classes,
                 output_activation=config["train_config"]["output_activation"],
@@ -271,13 +271,14 @@ for rep in range(config["train_config"]["num_reps"]):
                 add_extra_dense_layer=best_hps["add_extra_dense_layer"],
                 train_base_model=config["train_config"]["train_base_model"].lower()
                 == "true",
+                pooling_type=config["model_config"].get("pooling_type", "attn")
             )
             for _ in range(config["train_config"]["real_ensembling_samples"])
         ]
 
     else:
         model = [
-            LabradorFinetuneWrapper(
+            LabradorPoolingWrapper(
                 base_model_path=transformer_weights_path,
                 output_size=num_classes,
                 output_activation=config["train_config"]["output_activation"],
@@ -286,6 +287,8 @@ for rep in range(config["train_config"]["num_reps"]):
                 add_extra_dense_layer=best_hps["add_extra_dense_layer"],
                 train_base_model=config["train_config"]["train_base_model"].lower()
                 == "true",
+                pooling_type=config["model_config"].get("pooling_type", "attn")
+                
             )
         ]
 
