@@ -1,0 +1,53 @@
+{
+    "model": "LogisticRegression",
+    "pipeline": "StandardScaler -> LogisticRegression",
+    "label_column": "target",
+    "random_state": 42,
+    "splits": {
+        "train_size": 918,
+        "val_size": 197,
+        "test_size": 197,
+        "test_fraction_of_total": 0.15
+    },
+    "logistic_regression_params": {
+        "max_iter": 1000,
+        "class_weight": "balanced",
+        "solver": "lbfgs"
+    },
+    "training_time_seconds": 0.020863771438598633,
+    "features": [
+        "Sex",
+        "Age",
+        "50893",
+        "50912",
+        "50863",
+        "50927",
+        "50931",
+        "50878",
+        "50861",
+        "50954",
+        "PCR",
+        "KAL",
+        "NAT",
+        "51301",
+        "51279",
+        "51222",
+        "51221",
+        "51250",
+        "51248",
+        "51249",
+        "51265",
+        "51256",
+        "51244",
+        "51254",
+        "51200",
+        "51146",
+        "52075",
+        "51133",
+        "52074",
+        "52073",
+        "52069",
+        "Suspect",
+        "target"
+    ]
+}
