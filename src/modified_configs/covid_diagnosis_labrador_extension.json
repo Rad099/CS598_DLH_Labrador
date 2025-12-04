@@ -54,7 +54,7 @@
     "continuous_head_activation": "sigmoid",
     "dropout_rate": 0.1,
     "max_seq_length": 90,
-    "pooling_type": "attn"
+    "pooling_type": "gated"
   },
   "outfile_name_root": "covid_diagnosis_labrador"
 }

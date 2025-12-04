@@ -40,6 +40,7 @@
     "output_activation": "softmax",
     "dropout_rate": 0.1,
     "pooling_type": "attn", 
-    "max_seq_length": 90},
+    "max_seq_length": 90,
+    "pooling_type:": "attn"},
     "outfile_name_root": "cancer_diagnosis_labrador"
 }
