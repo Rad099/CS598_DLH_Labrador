@@ -1,13 +1,13 @@
 {
-  "system_config": {"wandb_project_name": "cancer_diagnosis_bert194M",
+  "system_config": {"wandb_project_name": "drinks_per_day_bert194M",
                  "use_wandb": "True",
                  "wandb_mode": "offline",
                  "saved_model_path": "model_weights/",
-                 "results_path": "original_labrador/data/results/cancer_diagnosis/",
+                 "results_path": "original_labrador/data/results/drinks_per_day/",
                  "dataset_dir": "original_labrador/data/evaluations",
-                 "processed_data_dir": "original_labrador/data/processed",
                  "transformer_dir": "bert194M",
-                 "dataset_name": "cancer_diagnosis_bert_data.npz",
+                 "processed_data_dir": "original_labrador/data/processed",
+                 "dataset_name": "drinks_per_day_bert_inputs.npz",
                  "codebook_path": "original_labrador/data/processed/labcode_codebook_bert.csv",
                  "ecdf_path": "original_labrador/data/processed/mimic4_ecdfs.npz",
                  "run_eagerly": "False",
@@ -21,9 +21,9 @@
                 "dropout_rate": [0.1, 0.3],
                 "train_base_model": "True",
                 "add_extra_dense_layer": "True",
-                "output_activation": "softmax",
-                "skip_cross_validation": "False",
-                "loss_function": "sparse_categorical_crossentropy"},
+                "output_activation": "linear",
+                "loss_function": "mean_squared_error",
+                "skip_cross_validation":  "False"},
 
-    "outfile_name_root": "cancer_diagnosis_bert194M"
+    "outfile_name_root": "drinks_per_day_bert194M"
 }

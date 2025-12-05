@@ -33,7 +33,7 @@
       0.1,
       0.3
     ],
-    "train_base_model": "False",
+    "train_base_model": "True",
     "add_extra_dense_layer": "True",
     "output_activation": "sigmoid",
     "loss_function": "binary_crossentropy",

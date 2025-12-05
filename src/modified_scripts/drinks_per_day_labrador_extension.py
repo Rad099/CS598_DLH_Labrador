@@ -1,6 +1,6 @@
 import sys, os
 
-repo_root = os.path.dirname(os.path.abspath(__file__))  
+repo_root = os.path.dirname(os.path.abspath(__file__))  # or hardcode in Colab
 sys.path.append(os.path.join(repo_root, "src"))
 sys.path.append(os.path.join(repo_root, "original_labrador"))
 
@@ -23,17 +23,13 @@ if repo_root not in sys.path:
 
 import numpy as np
 import pandas as pd
-from sklearn import preprocessing
 from sklearn.model_selection import KFold
-from tensorflow.keras.utils import set_random_seed
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import SparseCategoricalCrossentropy, Reduction
+from tensorflow.keras.utils import set_random_seed
 from tqdm import tqdm
 import wandb
 
 from lab_transformers.models.labrador.finetuning_wrapper import LabradorFinetuneWrapper
-from models.labrador_pooling import LabradorPoolingWrapper # extension: attn/gating pooling
-
 from lab_transformers.utils import gen_combinations
 
 time_string = time.strftime("%Y%m%d-%H%M%S")
@@ -42,16 +38,12 @@ if "wandb_key" in os.environ:
 else:
     os.environ["WANDB_MODE"] = "disabled"
 
+
 config_path = sys.argv[1]
 fraction_of_data_to_use = float(sys.argv[2])
 
 with open(config_path) as f:
     config = json.load(f)
-
-
-combos = list(gen_combinations(config["train_config"]))
-print(f"[DEBUG] Number of HP combos: {len(combos)}")
-print("[DEBUG] Example combo:", combos[0] if combos else "NONE")
 
 os.environ["WANDB_MODE"] = config["system_config"]["wandb_mode"]
 
@@ -73,17 +65,13 @@ transformer_weights_path = (
     else None
 )
 
-# Load evaluation data
 model_inputs = np.load(
     op.join(
         config["system_config"]["dataset_dir"], config["system_config"]["dataset_name"]
     )
 )
+output_size = 1
 
-num_classes = len(np.unique(model_inputs["label"]))
-scce = SparseCategoricalCrossentropy(
-    from_logits=False, reduction=Reduction.SUM_OVER_BATCH_SIZE
-)
 results = []
 use_wandb = config["system_config"]["use_wandb"].lower() == "true"
 for rep in range(config["train_config"]["num_reps"]):
@@ -111,7 +99,7 @@ for rep in range(config["train_config"]["num_reps"]):
     X_train = {k: X_dev[k][train_ix] for k in X_dev.keys()}
     y_train = y_dev[train_ix]
 
-    best_ce = None
+    best_mse = None
     best_hps = None
     num_hp_combinations = len(list(gen_combinations(config["train_config"])))
     for j, train_config_i in enumerate(gen_combinations(config["train_config"])):
@@ -128,7 +116,7 @@ for rep in range(config["train_config"]["num_reps"]):
                 "evaluate. Set skip_cross_validation to False or remove the hyperparameter combinations."
             )
 
-        labrador_crossentropies = []
+        labrador_mses = []
         kf = KFold(
             n_splits=config["train_config"]["num_k_folds"],
             shuffle=True,
@@ -139,29 +127,15 @@ for rep in range(config["train_config"]["num_reps"]):
             X_kval = {k: X_train[k][kval_index] for k in X_train.keys()}
             y_ktrain, y_kval = y_train[ktrain_index], y_train[kval_index]
 
-            # Standardize the continuous non-mimic-lab features in X
-            scaler = preprocessing.StandardScaler().fit(
-                X_ktrain["non_mimic_features_continuous"]
-            )
-            X_ktrain["non_mimic_features_continuous"] = scaler.transform(
-                X_ktrain["non_mimic_features_continuous"]
-            )
-
-            # Combine discrete and continuous non-mimic features
-            X_ktrain["non_mimic_features"] = np.concatenate(
-                [
-                    X_ktrain["non_mimic_features_discrete"],
-                    X_ktrain["non_mimic_features_continuous"],
-                ],
-                axis=1,
-            )
+            # Note: unlike other evaluations, no standardization is needed because all features are mimic labs
+            # Also, no missing value imputation is needed because this dataset has no missing values
 
             # Fit and evaluate the model
             if config.get("train_config", {}).get("real_ensembling_samples", False):
                 model = [
-                    LabradorPoolingWrapper(
+                    LabradorFinetuneWrapper(
                         base_model_path=transformer_weights_path,
-                        output_size=num_classes,
+                        output_size=output_size,
                         output_activation=config["train_config"]["output_activation"],
                         model_params=config["model_config"],
                         dropout_rate=train_config_i["dropout_rate"],
@@ -170,16 +144,15 @@ for rep in range(config["train_config"]["num_reps"]):
                             "train_base_model"
                         ].lower()
                         == "true",
-                        pooling_type=train_config_i.get("pooling_method", "gated"),
                     )
                     for _ in range(config["train_config"]["real_ensembling_samples"])
                 ]
 
             else:
                 model = [
-                    LabradorPoolingWrapper(
+                    LabradorFinetuneWrapper(
                         base_model_path=transformer_weights_path,
-                        output_size=num_classes,
+                        output_size=output_size,
                         output_activation=config["train_config"]["output_activation"],
                         model_params=config["model_config"],
                         dropout_rate=train_config_i["dropout_rate"],
@@ -188,7 +161,6 @@ for rep in range(config["train_config"]["num_reps"]):
                             "train_base_model"
                         ].lower()
                         == "true",
-                        pooling_type=train_config_i.get("pooling_method", "gated"),
                     )
                 ]
 
@@ -198,7 +170,6 @@ for rep in range(config["train_config"]["num_reps"]):
                     optimizer=Adam(learning_rate=train_config_i["learning_rate"]),
                     run_eagerly=config["system_config"]["run_eagerly"].lower()
                     == "true",
-
                 )
 
             for ix, m in enumerate(model):
@@ -209,18 +180,6 @@ for rep in range(config["train_config"]["num_reps"]):
                     batch_size=train_config_i["batch_size"],
                     verbose=True,
                 )
-
-            # Calculate categorical cross-entropy  (compare to y_kval)
-            X_kval["non_mimic_features_continuous"] = scaler.transform(
-                X_kval["non_mimic_features_continuous"]
-            )
-            X_kval["non_mimic_features"] = np.concatenate(
-                [
-                    X_kval["non_mimic_features_discrete"],
-                    X_kval["non_mimic_features_continuous"],
-                ],
-                axis=1,
-            )
 
             if config.get("train_config", {}).get(
                 "monte_carlo_dropout_ensembling_samples", False
@@ -241,8 +200,8 @@ for rep in range(config["train_config"]["num_reps"]):
                 y_kpred = [m.call(X_kval) for m in model]
                 y_kpred = np.mean(y_kpred, axis=0)
 
-            categorical_ce = scce(y_kval, y_kpred).numpy()
-            labrador_crossentropies.append(categorical_ce)
+            labrador_mse = np.mean((y_kval - y_kpred) ** 2)
+            labrador_mses.append(labrador_mse)
 
         if use_wandb:
             run_name = (
@@ -253,43 +212,40 @@ for rep in range(config["train_config"]["num_reps"]):
                 config=config | train_config_i | {"rep_num": rep, "config_num": j},
                 name=run_name,
             )
-            wandb.log({"cross_entropy_per_config": np.mean(labrador_crossentropies)})
+            wandb.log({"mse_per_config": np.mean(labrador_mses)})
             run.finish()
 
-        if best_ce is None or np.mean(labrador_crossentropies) < best_ce:
-            best_ce = np.mean(labrador_crossentropies)
+        if best_mse is None or np.mean(labrador_mses) < best_mse:
+            best_mse = np.mean(labrador_mses)
             best_hps = train_config_i
 
     # Fit the model with the best hyperparameters on the full training set
     if config.get("train_config", {}).get("real_ensembling_samples", False):
         model = [
-            LabradorPoolingWrapper(
+            LabradorFinetuneWrapper(
                 base_model_path=transformer_weights_path,
-                output_size=num_classes,
+                output_size=output_size,
                 output_activation=config["train_config"]["output_activation"],
                 model_params=config["model_config"],
                 dropout_rate=best_hps["dropout_rate"],
                 add_extra_dense_layer=best_hps["add_extra_dense_layer"],
                 train_base_model=config["train_config"]["train_base_model"].lower()
                 == "true",
-                pooling_type=best_hps.get("pooling_method", "gated"),
             )
             for _ in range(config["train_config"]["real_ensembling_samples"])
-
         ]
 
     else:
         model = [
-            LabradorPoolingWrapper(
+            LabradorFinetuneWrapper(
                 base_model_path=transformer_weights_path,
-                output_size=num_classes,
+                output_size=output_size,
                 output_activation=config["train_config"]["output_activation"],
                 model_params=config["model_config"],
                 dropout_rate=best_hps["dropout_rate"],
                 add_extra_dense_layer=best_hps["add_extra_dense_layer"],
                 train_base_model=config["train_config"]["train_base_model"].lower()
                 == "true",
-                pooling_type=best_hps.get("pooling_method", "gated"),
             )
         ]
 
@@ -300,47 +256,21 @@ for rep in range(config["train_config"]["num_reps"]):
             run_eagerly=config["system_config"]["run_eagerly"].lower() == "true",
         )
 
-    scaler = preprocessing.StandardScaler().fit(
-        X_train["non_mimic_features_continuous"]
-    )
-    X_train_scaled = {k: X_train[k].copy() for k in X_train.keys()}
-    X_train_scaled["non_mimic_features_continuous"] = scaler.transform(
-        X_train["non_mimic_features_continuous"]
-    )
-    X_train_scaled["non_mimic_features"] = np.concatenate(
-        [
-            X_train_scaled["non_mimic_features_discrete"],
-            X_train_scaled["non_mimic_features_continuous"],
-        ],
-        axis=1,
-    )
     for ix, m in enumerate(model):
         m.fit(
-            X_train_scaled,
+            X_train,
             y_train,
             epochs=best_hps["num_epochs"],
             batch_size=best_hps["batch_size"],
             verbose=True,
         )
 
-    X_test_scaled = {k: X_test[k].copy() for k in X_test.keys()}
-    X_test_scaled["non_mimic_features_continuous"] = scaler.transform(
-        X_test["non_mimic_features_continuous"]
-    )
-    X_test_scaled["non_mimic_features"] = np.concatenate(
-        [
-            X_test_scaled["non_mimic_features_discrete"],
-            X_test_scaled["non_mimic_features_continuous"],
-        ],
-        axis=1,
-    )
-
     if config.get("train_config", {}).get(
         "monte_carlo_dropout_ensembling_samples", False
     ):
         pred_samples = np.array(
             [
-                m.call(X_test_scaled, training=True)
+                m.call(X_test, training=True)
                 for m in model
                 for _ in range(
                     config["train_config"]["monte_carlo_dropout_ensembling_samples"]
@@ -349,10 +279,10 @@ for rep in range(config["train_config"]["num_reps"]):
         )
         y_pred = np.mean(pred_samples, axis=0)
     else:
-        y_pred = [m.call(X_test_scaled) for m in model]
+        y_pred = [m.call(X_test) for m in model]
         y_pred = np.mean(y_pred, axis=0)
 
-    ce = scce(y_test, y_pred).numpy()
+    test_mse = np.mean((y_test - y_pred) ** 2)
 
     # Save y_test and y_pred to csv
     test_prediction_df = pd.concat(
@@ -378,32 +308,26 @@ for rep in range(config["train_config"]["num_reps"]):
             config=config | best_hps | {"rep_num": rep},
             name=run_name,
         )
-        wandb.log({"test_ce": ce, "rep": rep})
+        wandb.log({"test_mse": test_mse, "rep": rep})
         run.finish()
 
     if transformer_dir is not None:
-        results.extend(
-            [
-                {
-                    "rep": rep,
-                    "fraction": fraction_of_data_to_use,
-                    "method": transformer_dir,
-                    "metric": "cross_entropy",
-                    "value": ce,
-                }
-            ]
+        results.append(
+            {
+                "rep": rep,
+                "fraction": fraction_of_data_to_use,
+                "method": transformer_dir,
+                "mse": test_mse,
+            }
         )
     else:
-        results.extend(
-            [
-                {
-                    "rep": rep,
-                    "fraction": fraction_of_data_to_use,
-                    "method": "labrador_ablation",
-                    "metric": "cross_entropy",
-                    "value": ce,
-                }
-            ]
+        results.append(
+            {
+                "rep": rep,
+                "fraction": fraction_of_data_to_use,
+                "method": "labrador_ablation",
+                "mse": test_mse,
+            }
         )
 
 # Save results
