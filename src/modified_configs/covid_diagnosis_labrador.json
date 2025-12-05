@@ -4,9 +4,10 @@
   "use_wandb": "True",
   "wandb_mode": "offline",
 
-  "saved_model_path": "original_labrador/model_weights/",
+  "saved_model_path": "model_weights/",
   "results_path": "original_labrador/data/results/covid_diagnosis/",
   "dataset_dir": "original_labrador/data/evaluations",
+  "transformer_dir": "labrador",
   "processed_data_dir": "original_labrador/data/processed",
 
   "dataset_name": "covid_diagnosis_labrador_data.npz",
@@ -23,17 +24,17 @@
       30
     ],
     "learning_rate": [
-      1e-4,
-      3e-4
+      5e-4,
+      1e-3
     ],
     "batch_size": [
       32
     ],
     "dropout_rate": [
-      0.1,
-      0.3
+      0.5,
+      0.7
     ],
-    "train_base_model": "True",
+    "train_base_model": "False",
     "add_extra_dense_layer": "True",
     "output_activation": "sigmoid",
     "loss_function": "binary_crossentropy",
