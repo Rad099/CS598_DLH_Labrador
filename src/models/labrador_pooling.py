@@ -68,7 +68,7 @@ class LabradorPoolingWrapper(keras.Model):
         self.attn_dense1 = keras.layers.Dense(attn_hidden_dim, activation="tanh")
         self.attn_dense2 = keras.layers.Dense(1, activation=None)
 
-        # NEW: gate network (used only when pooling_type == "gated")
+        # gate network (used only when pooling_type == "gated")
         # Input: concat[h_mean, h_attn]  -> gate g in (0,1)^D  (elementwise)
         self.gate_dense1 = keras.layers.Dense(gate_hidden_dim, activation="tanh")
         self.gate_dense2 = keras.layers.Dense(

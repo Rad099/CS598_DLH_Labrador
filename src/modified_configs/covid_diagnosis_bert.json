@@ -17,17 +17,17 @@
   "train_config": {
     "num_reps": 1,
     "num_k_folds": 3,
-    "num_epochs": [30],
+    "num_epochs": [90],
     "learning_rate": [
-      1e-4,
-      3e-4
+      5e-4,
+      1e-3
     ],
-    "batch_size": [32],
+    "batch_size": [64],
     "dropout_rate": [
-      0.1,
-      0.3
+      0.5,
+      0.7
     ],
-    "train_base_model": "True",
+    "train_base_model": "False",
     "add_extra_dense_layer": "True",
     "output_activation": "sigmoid",
     "loss_function": "binary_crossentropy",

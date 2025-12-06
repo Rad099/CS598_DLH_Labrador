@@ -199,7 +199,7 @@ for rep in range(config["train_config"]["num_reps"]):
                             "train_base_model"
                         ].lower()
                         == "true",
-                        pooling_type=config["model_config"].get("pooling_type", "attn"),
+                        pooling_type=config["model_config"].get("pooling_type", "gated"),
                     )
                 ]
 

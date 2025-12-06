@@ -1,13 +1,13 @@
 {
-  "system_config": {"wandb_project_name": "cancer_diagnosis_labrador",
+  "system_config": {"wandb_project_name": "drinks_per_day_labrador",
                  "use_wandb": "True",
                  "wandb_mode": "offline",
                  "saved_model_path": "model_weights/",
-                 "results_path": "original_labrador/data/results/cancer_diagnosis/",
+                 "results_path": "original_labrador/data/results/drinks_per_day/",
                  "dataset_dir": "original_labrador/data/evaluations",
                  "transformer_dir": "labrador",
                  "processed_data_dir": "original_labrador/data/processed",
-                 "dataset_name": "cancer_diagnosis_labrador_data.npz",
+                 "dataset_name": "drinks_per_day_labrador_inputs.npz",
                  "codebook_path": "original_labrador/data/processed/labcode_codebook_labrador.csv",
                  "ecdf_path": "original_labrador/data/processed/mimic4_ecdfs.npz",
                  "run_eagerly": "False",
@@ -15,15 +15,15 @@
 
   "train_config": {"num_reps": 1,
                   "num_k_folds": 3,
-                "num_epochs": [90],
-                "learning_rate": [5e-4, 1e-3],
-                "batch_size": [64],
-                "dropout_rate": [0.5, 0.7],
-                "train_base_model": "False",
+                "num_epochs": [30],
+                "learning_rate": [1e-4, 3e-4],
+                "batch_size": [32],
+                "dropout_rate": [0.1, 0.3],
+                "train_base_model": "True",
                 "add_extra_dense_layer": "True",
-                "output_activation": "softmax",
-                "skip_cross_validation": "False",
-                "loss_function": "sparse_categorical_crossentropy"},
+                "output_activation": "linear",
+                "loss_function": "mean_squared_error",
+                "skip_cross_validation":  "False"},
 
   "model_config": {
     "mask_token": 530,
@@ -37,9 +37,9 @@
     "transformer_feedforward_dim": 1024,
     "include_head": "True",
     "continuous_head_activation": "sigmoid",
-    "output_activation": "softmax",
     "dropout_rate": 0.1,
-    "max_seq_length": 90},
+    "max_seq_length": 90,
+    "pooling_type": "attn"},
 
-    "outfile_name_root": "cancer_diagnosis_labrador"
+    "outfile_name_root": "drinks_per_day_labrador"
 }
