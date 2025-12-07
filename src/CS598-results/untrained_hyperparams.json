@@ -1,0 +1,12 @@
+{
+    "batch_size": 64,
+    "learning_rate": 0.0001,
+    "epochs": 20,
+    "random_state": 42,
+    "base_model_path": null,
+    "config_path": "model_weights/labrador/config.json",
+    "train_size": 918,
+    "val_size": 197,
+    "test_size": 197,
+    "training_time_seconds": 235.40488982200623
+}

@@ -145,7 +145,7 @@ for rep in range(config["train_config"]["num_reps"]):
                             "train_base_model"
                         ].lower()
                         == "true",
-                        pooling_type=config["model_config"].get("pooling_type", "attn"),
+                        pooling_type=config["model_config"].get("pooling_type", "gated"),
                     )
                     for _ in range(config["train_config"]["real_ensembling_samples"])
                 ]
@@ -163,7 +163,7 @@ for rep in range(config["train_config"]["num_reps"]):
                             "train_base_model"
                         ].lower()
                         == "true",
-                        pooling_type=config["model_config"].get("pooling_type", "attn"),
+                        pooling_type=config["model_config"].get("pooling_type", "gated"),
                     )
                 ]
 
@@ -234,7 +234,7 @@ for rep in range(config["train_config"]["num_reps"]):
                 add_extra_dense_layer=best_hps["add_extra_dense_layer"],
                 train_base_model=config["train_config"]["train_base_model"].lower()
                 == "true",
-                pooling_type=config["model_config"].get("pooling_type", "attn"),
+                pooling_type=config["model_config"].get("pooling_type", "gated"),
             )
             for _ in range(config["train_config"]["real_ensembling_samples"])
         ]

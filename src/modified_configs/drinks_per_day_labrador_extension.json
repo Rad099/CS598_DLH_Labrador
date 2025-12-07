@@ -15,10 +15,10 @@
 
   "train_config": {"num_reps": 1,
                   "num_k_folds": 3,
-                "num_epochs": [30],
-                "learning_rate": [1e-4, 3e-4],
-                "batch_size": [32],
-                "dropout_rate": [0.1, 0.3],
+                "num_epochs": [90],
+                "learning_rate": [5e-4, 1e-3],
+                "batch_size": [64],
+                "dropout_rate": [0.5, 0.7],
                 "train_base_model": "True",
                 "add_extra_dense_layer": "True",
                 "output_activation": "linear",
@@ -39,7 +39,7 @@
     "continuous_head_activation": "sigmoid",
     "dropout_rate": 0.1,
     "max_seq_length": 90,
-    "pooling_type": "attn"},
+    "pooling_type": "gated"},
 
     "outfile_name_root": "drinks_per_day_labrador"
 }
